@@ -154,7 +154,7 @@
             background: #34495e;
         }
 
-        /* View Toggle Buttons - New but styled to match */
+        /* View Toggle Buttons */
         .view-toggle {
             display: flex;
             gap: 10px;
@@ -191,7 +191,7 @@
             font-size: 1.1em;
         }
 
-        /* History View - New but styled to match form */
+        /* History View */
         .history-section {
             background: white;
             border-radius: 20px;
@@ -626,7 +626,7 @@
             border-color: var(--danger-color);
         }
 
-        /* Name Fields Section - Replacing Signatures */
+        /* Name Fields Section */
         .name-fields-section {
             margin: 30px 0;
             display: grid;
@@ -903,17 +903,17 @@
                     </div>
                 </div>
 
-                <!-- Vehicle Type Selection -->
+                <!-- Vehicle Type Selection - Updated onclick events -->
                 <div class="vehicle-type">
                     <h3><i class="fas fa-tag"></i> Vehicle Type</h3>
                     <div class="type-buttons">
-                        <button type="button" class="type-btn active" onclick="setVehicleType('light')">
+                        <button type="button" class="type-btn active" onclick="setVehicleType('light', this)">
                             <i class="fas fa-car"></i> Light Vehicle
                         </button>
-                        <button type="button" class="type-btn" onclick="setVehicleType('minibus')">
+                        <button type="button" class="type-btn" onclick="setVehicleType('minibus', this)">
                             <i class="fas fa-bus"></i> Mini Bus
                         </button>
-                        <button type="button" class="type-btn" onclick="setVehicleType('truck')">
+                        <button type="button" class="type-btn" onclick="setVehicleType('truck', this)">
                             <i class="fas fa-truck"></i> Truck / LDV
                         </button>
                     </div>
@@ -1251,7 +1251,7 @@
                     <textarea id="comments" placeholder="Enter any additional notes, defects, or comments..."></textarea>
                 </div>
 
-                <!-- Name Fields - Replacing Signatures -->
+                <!-- Name Fields -->
                 <div class="name-fields-section">
                     <div class="name-field">
                         <label><i class="fas fa-pen"></i> Inspector Name *</label>
@@ -1315,7 +1315,7 @@
 
     <script>
         // Configuration
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyoEm_KAvdz-S3j21R_0Vp2IwAjg2VbRw4C4hFYBK0l22EWqKNySmahyX0Lmc632a6zBw/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzQ6nQgDG0eKZkodUXSWXxRR_GgY8MBIKMeg8l9FK51d9sOChFFDk3zHtR3OvOarfSXbg/exec';
         const SHEET_ID = '1ljS7Pdyg-w2JDgu7XA-c41yUqdiuVrYW3QHnY4uzZXQ';
         const SHEET_NAME = 'inspection';
         const DRIVE_FOLDER_ID = '1al8guXtgk-PJWwdNvd2umUXYv4AvwXSM';
@@ -1330,6 +1330,11 @@
         // Check connection on load
         window.onload = function() {
             checkConnection();
+            // Initialize with light vehicle
+            const lightButton = document.querySelector('.type-btn.active');
+            if (lightButton) {
+                setVehicleType('light', lightButton);
+            }
             // Pre-load history data in background
             setTimeout(() => {
                 if (document.getElementById('historyView').style.display === 'block') {
@@ -1360,13 +1365,17 @@
                 });
         }
 
-        // Vehicle type selection
-        function setVehicleType(type) {
-            // Update active button
+        // Updated Vehicle type selection with proper event handling
+        function setVehicleType(type, el) {
+            // Remove active class from all type buttons
             document.querySelectorAll('.type-btn').forEach(btn => {
                 btn.classList.remove('active');
             });
-            event.target.classList.add('active');
+            
+            // Add active class to clicked button
+            if (el) {
+                el.classList.add('active');
+            }
 
             // Update tires section based on vehicle type
             const tiresSection = document.getElementById('tiresSection');
@@ -1439,9 +1448,6 @@
             tiresSection.innerHTML = tiresHtml;
         }
 
-        // Initialize with light vehicle
-        setVehicleType('light');
-
         // Toggle damage selection
         function toggleDamage(btn) {
             btn.classList.toggle('selected');
@@ -1467,6 +1473,12 @@
                 document.querySelectorAll('input[type="radio"][value="OK"]').forEach(radio => {
                     radio.checked = true;
                 });
+                
+                // Reset vehicle type to light
+                const lightButton = document.querySelector('.type-btn');
+                if (lightButton) {
+                    setVehicleType('light', lightButton);
+                }
             }
         }
 
