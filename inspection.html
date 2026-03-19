@@ -71,6 +71,48 @@
             font-weight: 600;
         }
 
+        /* Connection Status Indicator */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85em;
+            padding: 5px 12px;
+            border-radius: 20px;
+            background: var(--light-bg);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #95a5a6;
+            transition: background 0.3s;
+        }
+
+        .status-dot.connected {
+            background: var(--success-color);
+            box-shadow: 0 0 5px var(--success-color);
+        }
+
+        .status-dot.disconnected {
+            background: var(--danger-color);
+        }
+
+        .status-text {
+            color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .sheet-name {
+            background: var(--secondary-color);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
         /* Policy Reference */
         .policy-ref {
             background: #f8f9fa;
@@ -788,14 +830,21 @@
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        <!-- Header with Connection Status -->
         <div class="header">
             <h1>
                 <i class="fas fa-clipboard-check"></i>
                 Vehicle Inspection Checklist
             </h1>
-            <div class="badge">
-                <i class="fas fa-cloud"></i> Google Drive Sync
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot" id="statusDot"></span>
+                    <span class="status-text" id="statusText">Checking connection...</span>
+                    <span class="sheet-name" id="sheetName">inspection</span>
+                </div>
+                <div class="badge">
+                    <i class="fas fa-cloud"></i> Google Drive Sync
+                </div>
             </div>
         </div>
 
@@ -1266,8 +1315,9 @@
 
     <script>
         // Configuration
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7sGMdGu8UGHHvBiuEq2F7sgeZK2wXtEtVEMDNAxsIo3-zFo_JCFRyv_YZGJixTKcH6g/exec';
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyoEm_KAvdz-S3j21R_0Vp2IwAjg2VbRw4C4hFYBK0l22EWqKNySmahyX0Lmc632a6zBw/exec';
         const SHEET_ID = '1ljS7Pdyg-w2JDgu7XA-c41yUqdiuVrYW3QHnY4uzZXQ';
+        const SHEET_NAME = 'inspection';
         const DRIVE_FOLDER_ID = '1al8guXtgk-PJWwdNvd2umUXYv4AvwXSM';
 
         // Set current date
@@ -1276,6 +1326,39 @@
             month: 'long',
             day: 'numeric'
         });
+
+        // Check connection on load
+        window.onload = function() {
+            checkConnection();
+            // Pre-load history data in background
+            setTimeout(() => {
+                if (document.getElementById('historyView').style.display === 'block') {
+                    loadInspections();
+                }
+            }, 1000);
+        };
+
+        // Check connection to Google Sheets
+        function checkConnection() {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            // Try to fetch a simple test
+            fetch(`${SCRIPT_URL}?action=test&sheetId=${SHEET_ID}&sheetName=${SHEET_NAME}`)
+                .then(response => {
+                    if (response.ok) {
+                        statusDot.className = 'status-dot connected';
+                        statusText.textContent = 'Connected';
+                    } else {
+                        statusDot.className = 'status-dot disconnected';
+                        statusText.textContent = 'Disconnected';
+                    }
+                })
+                .catch(() => {
+                    statusDot.className = 'status-dot disconnected';
+                    statusText.textContent = 'Disconnected';
+                });
+        }
 
         // Vehicle type selection
         function setVehicleType(type) {
@@ -1413,14 +1496,19 @@
             const listDiv = document.getElementById('inspectionsList');
             listDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i><p>Loading reports...</p></div>';
 
-            fetch(`${SCRIPT_URL}?action=getAll&sheetId=${SHEET_ID}`)
+            fetch(`${SCRIPT_URL}?action=getAll&sheetId=${SHEET_ID}&sheetName=${SHEET_NAME}`)
                 .then(response => response.json())
                 .then(data => {
                     displayInspections(data);
+                    // Update connection status on successful load
+                    document.getElementById('statusDot').className = 'status-dot connected';
+                    document.getElementById('statusText').textContent = 'Connected';
                 })
                 .catch(error => {
                     console.error('Error:', error);
                     listDiv.innerHTML = '<p style="color: red; text-align: center;">Error loading reports. Please try again.</p>';
+                    document.getElementById('statusDot').className = 'status-dot disconnected';
+                    document.getElementById('statusText').textContent = 'Disconnected';
                 });
         }
 
@@ -1483,7 +1571,7 @@
 
         // View single inspection
         function viewInspection(inspectionId) {
-            fetch(`${SCRIPT_URL}?action=getById&id=${inspectionId}&sheetId=${SHEET_ID}`)
+            fetch(`${SCRIPT_URL}?action=getById&id=${inspectionId}&sheetId=${SHEET_ID}&sheetName=${SHEET_NAME}`)
                 .then(response => response.json())
                 .then(inspection => {
                     if (inspection) {
@@ -1609,6 +1697,7 @@
             const formData = {
                 action: 'save',
                 sheetId: SHEET_ID,
+                sheetName: SHEET_NAME,
                 driveFolderId: DRIVE_FOLDER_ID,
                 inspectorName: inspector,
                 employeeId: document.getElementById('employeeId').value,
@@ -1643,12 +1732,18 @@
                 // Show success message
                 showSuccessMessage(formData);
                 resetForm();
+                
+                // Update connection status
+                document.getElementById('statusDot').className = 'status-dot connected';
+                document.getElementById('statusText').textContent = 'Connected';
             })
             .catch(error => {
                 console.error('Error:', error);
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
                 alert('Error saving inspection. Please try again.');
+                document.getElementById('statusDot').className = 'status-dot disconnected';
+                document.getElementById('statusText').textContent = 'Disconnected';
             });
         }
 
@@ -1676,6 +1771,10 @@
                     <span class="result-value" style="color: #95a5a6;">${data.itemsNA}</span>
                 </div>
                 <div class="result-item">
+                    <span class="result-label">Sheet:</span>
+                    <span class="result-value" style="color: var(--secondary-color);">${SHEET_NAME}</span>
+                </div>
+                <div class="result-item">
                     <span class="result-label">Status:</span>
                     <span class="result-value" style="color: #27ae60;">✓ Saved to Google Drive</span>
                 </div>
@@ -1696,16 +1795,6 @@
         function downloadPolicy() {
             window.open(`https://drive.google.com/drive/folders/${DRIVE_FOLDER_ID}`, '_blank');
         }
-
-        // Load initial data
-        window.onload = function() {
-            // Pre-load history data in background
-            setTimeout(() => {
-                if (document.getElementById('historyView').style.display === 'block') {
-                    loadInspections();
-                }
-            }, 1000);
-        };
     </script>
 </body>
 </html>
